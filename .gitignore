@@ -1,5 +1,7 @@
 # Python byte code, etc.
 __pycache__/
+*.py[cod]
+*$py.class
 
 # C/C++ object files/libraries
 *.o
@@ -13,9 +15,93 @@ __pycache__/
 
 # pretrained_models
 pretrained_models/big-lama
-# pytracking/pretrain/
 *.pth
 
+# Results
 results/*
 
+# Cython debug symbols
+*.pyd
 
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg
+*.egg-info/
+dist/
+build/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.manifest
+*.spec
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Jupyter Notebook files
+.ipynb_checkpoints
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.env
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Pylint report
+pylint-report.txt
+
+# Local .env files
+.env.local
+.env.test
+.env.production
+
+# Logs
+*.log
+*.out
+*.err
+
+# Docker
+docker-compose.yml
+Dockerfile
