@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 from classes.Segment import ImageSegmentation
-from utils.compress_descompress import combine_boolean_matrices, compress_encoded_matrix, run_length_encode_matrix
+from utils.compress_descompress import combine_boolean_matrices, compress_encoded_matrix, getMask, run_length_encode_matrix
 
 # Initialize FastAPI application
 app = FastAPI()
@@ -66,15 +66,7 @@ async def procesar_masks(file: UploadFile = File(...)):
                     "counts": mask.get("counts", []),
                     "size": mask.get("size", "N/A")
                 }
-            masks_data.append({
-                "segmentation": segmentation_data,
-                "bbox": mask.get("bbox", "N/A"),
-                "area": mask.get("area", "N/A"),
-                "predictedIou": mask.get("predicted_iou", "N/A"),
-                "stabilityScore": mask.get("stability_score", "N/A"),
-                "cropBox": mask.get("crop_box", "N/A"),
-                "pointCoords": mask.get("point_coords", "N/A")
-            })
+            masks_data.append(segmentation_data)
         return JSONResponse(content={"masks": masks_data})
 
     except Exception as e:

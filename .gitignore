@@ -105,3 +105,6 @@ pylint-report.txt
 # Docker
 docker-compose.yml
 Dockerfile
+
+#Modelos
+models/
