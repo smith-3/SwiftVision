@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
 
     red_color = (213,196,161)
-    output_image_path = "./response/output.png"
+    output_image_path = "./output/output.png"
 
     segmentation.hair_color(refined_mask, red_color, output_image_path)
     #segmentation.show_anns(sorted_anns)

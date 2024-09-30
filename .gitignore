@@ -108,3 +108,5 @@ Dockerfile
 
 #Modelos
 models/
+output/
+images/

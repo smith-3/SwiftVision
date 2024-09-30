@@ -5,7 +5,7 @@ from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
-from classes.Segment import ImageSegmentation
+from app.Segment import ImageSegmentation
 from utils.compress_descompress import combine_boolean_matrices, compress_encoded_matrix, getMask, run_length_encode_matrix
 
 # Initialize FastAPI application
@@ -40,7 +40,7 @@ def main():
 @app.post("/masks", tags=['Image'])
 async def procesar_masks(file: UploadFile = File(...)):
     try:
-        image_path = f"./response/{file.filename}"
+        image_path = f"./output/{file.filename}"
         os.makedirs(os.path.dirname(image_path), exist_ok=True)
         with open(image_path, "wb") as buffer:
             buffer.write(await file.read())
@@ -99,9 +99,9 @@ async def colorize_image(
         print("Mascara combinada")
         refined_mask = segmentation.refine_hair_mask(combined_mask)
         print("Refinado")
-        segmentation.hair_color(refined_mask, rgb_values, "./response/colored_image.png")
+        segmentation.hair_color(refined_mask, rgb_values, "./output/colored_image.png")
         print("Cambio de color listo")
-        return FileResponse("./response/colored_image.png", media_type="image/png")
+        return FileResponse("./output/colored_image.png", media_type="image/png")
     except Exception as e:
         print(f"Error en colorize_image: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
@@ -178,7 +178,7 @@ async def colorize_image(
             raise HTTPException(status_code=400, detail="El valor RGB no tiene el formato correcto.")
 
         # Guardar la imagen
-        image_path = f"./response/{file.filename}"
+        image_path = f"./output/{file.filename}"
         print(f"Ruta donde se guardará la imagen: {image_path}")
         os.makedirs(os.path.dirname(image_path), exist_ok=True)
         
@@ -221,11 +221,11 @@ async def colorize_image(
         print("Máscara de cabello refinada.")
 
         # Cambiar el color del cabello
-        segmentation.hair_color(refined_mask, rgb_values, "./response/colored_image.png")
+        segmentation.hair_color(refined_mask, rgb_values, "./output/colored_image.png")
         print("Cambio de color de cabello aplicado exitosamente.")
 
         # Devolver la imagen final
-        return FileResponse("./response/colored_image.png", media_type="image/png")
+        return FileResponse("./output/colored_image.png", media_type="image/png")
 
     except HTTPException as http_exc:
         # Manejo específico para HTTPException
