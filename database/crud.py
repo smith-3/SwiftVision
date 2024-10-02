@@ -2,20 +2,43 @@ from sqlalchemy.orm import Session
 
 from . import models
 from . import schemas
+import bcrypt
 
 # CRUD para User
+# Encripta la contraseña antes de almacenar el usuario en la base de datos
 def create_user(db: Session, user: schemas.UserCreate):
-    db_user = models.User(username=user.username, password=user.password)
+    hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())  # Hash de la contraseña
+    db_user = models.User(username=user.username, password=hashed_password.decode('utf-8'))
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
+
+def login(db: Session, username: str, password: str):
+    user = authenticate_user(db, username, password)
+    if not user:
+        raise ValueError("Invalid username or password")
+    return user
+
+
+# Función para autenticar a un usuario comparando la contraseña con la almacenada
+def authenticate_user(db: Session, username: str, password: str):
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if user is None:
+        return None
+    if not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+        return None
+    return user
 
 def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
 def get_users(db: Session, skip: int = 0, limit: int = 10):
     return db.query(models.User).offset(skip).limit(limit).all()
+
+# database/crud.py
+def get_user_by_username(db, username: str):
+    return db.query(models.User).filter(models.User.username == username).first()
 
 # CRUD para Project
 def create_project(db: Session, project: schemas.ProjectCreate, user_id: int):

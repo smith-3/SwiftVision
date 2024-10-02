@@ -5,9 +5,6 @@ from datetime import datetime
 class AnnotationBase(BaseModel):
     segmentation: str
     bbox: Optional[str]
-    area: Optional[int]
-    predicted_iou: Optional[float]
-    stability_score: Optional[float]
     crop_box: Optional[str]
     point_coords: Optional[str]
 
@@ -20,7 +17,7 @@ class Annotation(AnnotationBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ImageBase(BaseModel):
     base_image: str
@@ -35,7 +32,7 @@ class Image(ImageBase):
     annotations: List[Annotation] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ProjectBase(BaseModel):
     name: str
@@ -50,7 +47,7 @@ class Project(ProjectBase):
     images: List[Image] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserBase(BaseModel):
     username: str
@@ -64,4 +61,4 @@ class User(UserBase):
     projects: List[Project] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True

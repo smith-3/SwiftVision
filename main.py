@@ -1,11 +1,14 @@
 import json
-from typing import Union
+from typing import List, Union
 import os
-from fastapi import FastAPI, File, Form, UploadFile, HTTPException
+from fastapi import Depends, FastAPI, File, Form, UploadFile, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
+from requests import Session
 from app.Segment import ImageSegmentation
+from database import crud, schemas
+from database.database import get_db
 from utils.compress_descompress import combine_boolean_matrices, compress_encoded_matrix, getMask, run_length_encode_matrix
 
 # Initialize FastAPI application
@@ -33,9 +36,65 @@ async def startup_event():
     masks = None  # Inicializar masks
     print("ImageSegmentation initialized")
 
-@app.get("/", tags=['Home'])
-def main():
-    return JSONResponse(content={"message": "Bienvenido a IGORA"})
+@app.post("/login", response_model=schemas.User)
+def login(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)):
+    user = crud.authenticate_user(db, user_credentials.username, user_credentials.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+# Rutas para User
+@app.post("/users/", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_username(db, username=user.username)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+    return crud.create_user(db=db, user=user)
+
+@app.get("/users/", response_model=List[schemas.User])
+def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+    users = crud.get_users(db, skip=skip, limit=limit)
+    return users
+
+# @app.get("/users/{user_id}", response_model=schemas.User)
+# def read_user(user_id: int, db: Session = Depends(get_db)):
+#     db_user = crud.get_user(db, user_id=user_id)
+#     if db_user is None:
+#         raise HTTPException(status_code=404, detail="User not found")
+#     return db_user
+
+# Rutas para Project
+# @app.post("/users/{user_id}/projects/", response_model=schemas.Project)
+# def create_project_for_user(user_id: int, project: schemas.ProjectCreate, db: Session = Depends(get_db)):
+#     return crud.create_project(db=db, project=project, user_id=user_id)
+
+@app.get("/users/{user_id}/projects/", response_model=List[schemas.Project])
+def read_projects(user_id: int, db: Session = Depends(get_db)):
+    return crud.get_projects(db, user_id=user_id)
+
+# Rutas para Image
+# @app.post("/projects/{project_id}/images/", response_model=schemas.Image)
+# def create_image_for_project(project_id: int, image: schemas.ImageCreate, db: Session = Depends(get_db)):
+#     return crud.create_image(db=db, image=image, project_id=project_id)
+
+@app.get("/projects/{project_id}/images/", response_model=List[schemas.Image])
+def read_images(project_id: int, db: Session = Depends(get_db)):
+    # Aquí podrías implementar un filtro si es necesario
+    return crud.get_images_for_project(db, project_id=project_id)
+
+# Rutas para Annotation
+# @app.post("/images/{image_id}/annotations/", response_model=schemas.Annotation)
+# def create_annotation_for_image(image_id: int, annotation: schemas.AnnotationCreate, db: Session = Depends(get_db)):
+#     return crud.create_annotation(db=db, annotation=annotation, image_id=image_id)
+
+@app.get("/images/{image_id}/annotations/", response_model=List[schemas.Annotation])
+def read_annotations(image_id: int, db: Session = Depends(get_db)):
+    return crud.get_annotations_for_image(db, image_id=image_id)
+
 
 @app.post("/masks", tags=['Image'])
 async def procesar_masks(file: UploadFile = File(...)):
@@ -71,39 +130,6 @@ async def procesar_masks(file: UploadFile = File(...)):
 
     except Exception as e:
         print(f"Error en procesar_imagen: {e}")  # Print error to console
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-@app.post("/colorize", tags=['Image'])
-async def colorize_image(
-    masks_json: str = Form(...),    # Recibir el JSON con las máscaras
-    rgb: str = Form(...)           # Recibir el valor RGB
-):
-    try:
-        decoded_masks = []
-        print(masks_json)
-        try:
-            masks = json.loads(masks_json)
-            for indice in masks:
-                mask = segmentation.masks_data[indice]
-                segmentation_data = mask.get("segmentation", None)
-                counts = np.array(segmentation_data, dtype=bool)
-                decoded_masks.append(counts)
-        except (json.JSONDecodeError, KeyError) as e:
-            raise HTTPException(status_code=400, detail=f"Error en el formato de masks_json: {e}")
-        try:
-            print(rgb)
-            rgb_values = tuple(map(int, rgb.split(',')))
-        except ValueError:
-            raise HTTPException(status_code=400, detail="El valor RGB no tiene el formato correcto.")
-        combined_mask = combine_boolean_matrices(decoded_masks)
-        print("Mascara combinada")
-        refined_mask = segmentation.refine_hair_mask(combined_mask)
-        print("Refinado")
-        segmentation.hair_color(refined_mask, rgb_values, "./output/colored_image.png")
-        print("Cambio de color listo")
-        return FileResponse("./output/colored_image.png", media_type="image/png")
-    except Exception as e:
-        print(f"Error en colorize_image: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.post("/masks_points", tags=['Image'])
@@ -157,83 +183,4 @@ async def procesar_masks(
 
     except Exception as e:
         print(f"Error en procesar_imagen: {e}")  # Imprimir error en consola
-        return JSONResponse(status_code=500, content={"error": str(e)})
-    
-@app.post("/colorize_hair", tags=['Image'])
-async def colorize_image(
-    file: UploadFile = File(...),  # Recibir el archivo de imagen
-    rgb: str = Form(...)           # Recibir el valor RGB
-):
-    try:
-        # Imprimir los valores recibidos
-        print(f"Valor RGB recibido: {rgb}")
-        print(f"Nombre del archivo recibido: {file.filename}")
-
-        # Validar y convertir el valor RGB
-        try:
-            rgb_values = tuple(map(float, rgb.split(',')))
-            print(f"Valores RGB convertidos a tupla: {rgb_values}")
-        except ValueError:
-            print("Error: El valor RGB no tiene el formato correcto.")
-            raise HTTPException(status_code=400, detail="El valor RGB no tiene el formato correcto.")
-
-        # Guardar la imagen
-        image_path = f"./output/{file.filename}"
-        print(f"Ruta donde se guardará la imagen: {image_path}")
-        os.makedirs(os.path.dirname(image_path), exist_ok=True)
-        
-        with open(image_path, "wb") as buffer:
-            buffer.write(await file.read())
-        print("Archivo de imagen guardado exitosamente.")
-
-        # Verificar si la imagen fue guardada correctamente
-        if not os.path.exists(image_path):
-            print(f"Error: No se pudo guardar el archivo en {image_path}")
-            raise HTTPException(status_code=400, detail="Error al guardar el archivo.")
-
-        # Cargar la imagen en el sistema de segmentación
-        segmentation.load_image(image_path)
-        print("Imagen cargada para segmentación.")
-
-        # Generar las máscaras
-        masks = segmentation.generate_masks()
-        print("Máscaras generadas.")
-        if masks is None:
-            print("Error: No se pudieron generar las máscaras.")
-            raise HTTPException(status_code=500, detail="Error al generar las máscaras.")
-        
-        sorted_anns = sorted(masks, key=lambda x: x['area'], reverse=False)
-        masks = sorted_anns
-        # Encontrar la máscara del cabello
-        hair = None
-        for mask in sorted_anns:
-            if getMask(mask['segmentation']):
-                hair = mask['segmentation']
-                break  # Salir del bucle si se encuentra la máscara
-        if hair is None:
-            print("Error: No se pudo encontrar la máscara de cabello.")
-            raise HTTPException(status_code=404, detail="No se encontró la máscara de cabello.")
-        else:
-            print("Máscara de cabello obtenida.")
-
-        # Refinar la máscara del cabello
-        refined_mask = segmentation.refine_hair_mask(hair)
-        print("Máscara de cabello refinada.")
-
-        # Cambiar el color del cabello
-        segmentation.hair_color(refined_mask, rgb_values, "./output/colored_image.png")
-        print("Cambio de color de cabello aplicado exitosamente.")
-
-        # Devolver la imagen final
-        return FileResponse("./output/colored_image.png", media_type="image/png")
-
-    except HTTPException as http_exc:
-        # Manejo específico para HTTPException
-        print(f"HTTPException: {http_exc.detail}")
-        return JSONResponse(status_code=http_exc.status_code, content={"error": http_exc.detail})
-    except Exception as e:
-        # Manejo general de excepciones
-        print(f"Error en colorize_image: {e}")
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
         return JSONResponse(status_code=500, content={"error": str(e)})
