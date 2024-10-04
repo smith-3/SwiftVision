@@ -10,7 +10,7 @@ import torch
 
 from typing import Optional, Tuple
 
-from models_ai.segment_anything.segment_anything.modeling.sam import Sam
+from modelsAI.segment_anything.segment_anything.modeling.sam import Sam
 
 from .utils.transforms import ResizeLongestSide
 

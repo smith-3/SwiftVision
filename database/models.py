@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, Float, TIMESTAMP, func
+from sqlalchemy import Column, Integer, LargeBinary, String, ForeignKey, Text, Float, TIMESTAMP, func
 from sqlalchemy.orm import relationship
 from .database import Base
 class User(Base):
@@ -27,7 +27,7 @@ class Image(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey('projects.id'))
-    base_image = Column(String(255), nullable=False)
+    base_image = Column(LargeBinary, nullable=False)  # Contenido binario de la imagen
     created_at = Column(TIMESTAMP, server_default=func.now())
 
     project = relationship("Project", back_populates="images")
@@ -38,9 +38,9 @@ class Annotation(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     image_id = Column(Integer, ForeignKey('images.id'))
-    segmentation = Column(Text, nullable=False)
+    counts = Column(Text, nullable=False)
+    size = Column(String(255), nullable=True)
     bbox = Column(String(255), nullable=True)
-    crop_box = Column(String(255), nullable=True)
     point_coords = Column(String(255), nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
 

@@ -6,8 +6,8 @@
 
 import torch
 
-from models_ai.segment_anything import sam_model_registry
-from models_ai.segment_anything.utils.onnx import SamOnnxModel
+from modelsAI.segment_anything import sam_model_registry
+from modelsAI.segment_anything.utils.onnx import SamOnnxModel
 
 import argparse
 import warnings

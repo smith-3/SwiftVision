@@ -9,7 +9,7 @@ from requests import Session
 from app.Segment import ImageSegmentation
 from database import crud, schemas
 from database.database import get_db
-from utils.compress_descompress import combine_boolean_matrices, compress_encoded_matrix, getMask, run_length_encode_matrix
+from utils.compress_descompress import combine_boolean_matrices, compress_encoded_matrix, decompress_encoded_matrix, getMask, run_length_encode_matrix
 
 # Initialize FastAPI application
 app = FastAPI()
@@ -55,10 +55,10 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Username already registered")
     return crud.create_user(db=db, user=user)
 
-@app.get("/users/", response_model=List[schemas.User])
-def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    users = crud.get_users(db, skip=skip, limit=limit)
-    return users
+# @app.get("/users/", response_model=List[schemas.User])
+# def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
+#     users = crud.get_users(db, skip=skip, limit=limit)
+#     return users
 
 # @app.get("/users/{user_id}", response_model=schemas.User)
 # def read_user(user_id: int, db: Session = Depends(get_db)):
@@ -183,4 +183,45 @@ async def procesar_masks(
 
     except Exception as e:
         print(f"Error en procesar_imagen: {e}")  # Imprimir error en consola
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.post("/lama", tags=['Image'])
+async def procesar_masks(
+    file: UploadFile = File(...),
+    mask: str = Form(...),
+    size: str = Form(...)
+):
+    try:
+        image_path = f"./output/{file.filename}"
+        os.makedirs(os.path.dirname(image_path), exist_ok=True)
+        with open(image_path, "wb") as buffer:
+            buffer.write(await file.read())
+        if not os.path.exists(image_path):
+            raise HTTPException(status_code=400, detail="Error al guardar el archivo.")
+        mask_process = decompress_encoded_matrix(mask, size)
+        segmentation.load_image(image_path)
+        masks = segmentation.generate_masks()
+        if masks is None:
+            raise HTTPException(status_code=500, detail="Error al generar las máscaras.")
+        masks_data = []
+        for mask in masks:
+            segmentation_data = mask.get("segmentation", None)
+            if isinstance(segmentation_data, np.ndarray):
+                counts = np.array(segmentation_data, dtype=bool)
+                encoded_matrix = run_length_encode_matrix(counts)
+                mask_efficient = compress_encoded_matrix(encoded_matrix)
+                segmentation_data = {
+                    "counts": mask_efficient,
+                    "size": segmentation_data.shape[::-1]
+                }
+            else:
+                segmentation_data = {
+                    "counts": mask.get("counts", []),
+                    "size": mask.get("size", "N/A")
+                }
+            masks_data.append(segmentation_data)
+        return JSONResponse(content={"masks": masks_data})
+
+    except Exception as e:
+        print(f"Error en procesar_imagen: {e}")  # Print error to console
         return JSONResponse(status_code=500, content={"error": str(e)})

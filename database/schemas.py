@@ -3,9 +3,9 @@ from typing import List, Optional
 from datetime import datetime
 
 class AnnotationBase(BaseModel):
-    segmentation: str
+    counts: str
+    size: str
     bbox: Optional[str]
-    crop_box: Optional[str]
     point_coords: Optional[str]
 
 class AnnotationCreate(AnnotationBase):
