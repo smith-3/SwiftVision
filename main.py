@@ -1,21 +1,21 @@
-import json
-from typing import List, Union
-import os
-from fastapi import Depends, FastAPI, File, Form, UploadFile, HTTPException, status
-from fastapi.responses import FileResponse, JSONResponse
+from typing import List
+from fastapi import Depends, FastAPI, File, UploadFile, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-import numpy as np
 from requests import Session
-from app.Segment import ImageSegmentation
-from database import crud, schemas
+from app.ModelsAI import ModelsAI  # Importa solo la clase
+from database import schemas
 from database.database import get_db
-from utils.compress_descompress import combine_boolean_matrices, compress_encoded_matrix, decompress_encoded_matrix, getMask, run_length_encode_matrix
 
 # Initialize FastAPI application
-app = FastAPI()
-app.title = "IGORA"
-app.version = "1.0.0"
-app.description = "Todos los servicios de color en el salon se pueden realizar en IGORA"
+# Inicialización de la aplicación FastAPI con metadatos
+app = FastAPI(
+    title="SWIFT VISION",
+    version="1.0.0",
+    description=(
+        "API para la edición de imágenes basada en Segment Anything y Stable Diffusion, "
+        "permitiendo edición avanzada mediante inteligencia artificial."
+    )
+)
 
 # Configure CORS to allow any origin
 app.add_middleware(
@@ -26,202 +26,196 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global variable to hold the ImageSegmentation object
-segmentation = None
+# Global variable to hold the ModelsAI object
+modelsAI = None
 
 @app.on_event("startup")
 async def startup_event():
-    global segmentation, masks
-    segmentation = ImageSegmentation()
-    masks = None  # Inicializar masks
-    print("ImageSegmentation initialized")
+    """
+    Inicializa los modelos de IA cuando se inicia la aplicación.
+    """
+    global modelsAI
+    # Obtener la sesión de la base de datos
+    db = next(get_db())  # Obtiene la sesión de la base de datos
+    modelsAI = ModelsAI(db)  # Pasa la sesión al constructor de ModelsAI
+    print("ModelsAI initialized")
 
-@app.post("/login", response_model=schemas.User)
-def login(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)):
-    user = crud.authenticate_user(db, user_credentials.username, user_credentials.password)
+@app.post("/login", response_model=schemas.User, tags=["Authentication"])
+def login(user_credentials: schemas.UserCreate):
+    """
+    Autentica un usuario mediante su nombre de usuario y contraseña.
+
+    - **username**: Nombre de usuario.
+    - **password**: Contraseña del usuario.
+    """
+    user = modelsAI.crud.authenticate_user(
+        user_credentials.username, user_credentials.password
+    )
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password",
+            detail="Nombre de usuario o contraseña inválidos.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
 
-# Rutas para User
-@app.post("/users/", response_model=schemas.User)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_username(db, username=user.username)
+@app.post("/register", response_model=schemas.User, tags=["Authentication"])
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    """
+    Registra un nuevo usuario.
+
+    - **username**: Nombre de usuario único.
+    - **password**: Contraseña del usuario.
+    """
+    db_user = modelsAI.crud.get_user_by_username(username=user.username)
     if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
-    return crud.create_user(db=db, user=user)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El nombre de usuario ya está registrado."
+        )
+    return modelsAI.crud.create_user(user=user)
 
-# @app.get("/users/", response_model=List[schemas.User])
-# def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-#     users = crud.get_users(db, skip=skip, limit=limit)
-#     return users
+@app.get(
+    "/projects/{project_id}/images/", response_model=List[schemas.Image], tags=["Image"]
+)
+def read_images(project_id: int):
+    """
+    Devuelve las imágenes de un proyecto específico.
 
-# @app.get("/users/{user_id}", response_model=schemas.User)
-# def read_user(user_id: int, db: Session = Depends(get_db)):
-#     db_user = crud.get_user(db, user_id=user_id)
-#     if db_user is None:
-#         raise HTTPException(status_code=404, detail="User not found")
-#     return db_user
+    - **project_id**: ID del proyecto.
+    """
+    return modelsAI.crud.get_images_for_project(project_id=project_id)
 
-# Rutas para Project
-# @app.post("/users/{user_id}/projects/", response_model=schemas.Project)
-# def create_project_for_user(user_id: int, project: schemas.ProjectCreate, db: Session = Depends(get_db)):
-#     return crud.create_project(db=db, project=project, user_id=user_id)
-
-@app.get("/users/{user_id}/projects/", response_model=List[schemas.Project])
-def read_projects(user_id: int, db: Session = Depends(get_db)):
-    return crud.get_projects(db, user_id=user_id)
-
-# Rutas para Image
-# @app.post("/projects/{project_id}/images/", response_model=schemas.Image)
-# def create_image_for_project(project_id: int, image: schemas.ImageCreate, db: Session = Depends(get_db)):
-#     return crud.create_image(db=db, image=image, project_id=project_id)
-
-@app.get("/projects/{project_id}/images/", response_model=List[schemas.Image])
-def read_images(project_id: int, db: Session = Depends(get_db)):
-    # Aquí podrías implementar un filtro si es necesario
-    return crud.get_images_for_project(db, project_id=project_id)
-
-# Rutas para Annotation
-# @app.post("/images/{image_id}/annotations/", response_model=schemas.Annotation)
-# def create_annotation_for_image(image_id: int, annotation: schemas.AnnotationCreate, db: Session = Depends(get_db)):
-#     return crud.create_annotation(db=db, annotation=annotation, image_id=image_id)
-
-@app.get("/images/{image_id}/annotations/", response_model=List[schemas.Annotation])
-def read_annotations(image_id: int, db: Session = Depends(get_db)):
-    return crud.get_annotations_for_image(db, image_id=image_id)
+@app.get(
+    "/users/{user_id}/projects/", response_model=List[schemas.Project], tags=["Project"]
+)
+def read_projects(user_id: int):
+    # Verificar si el usuario existe
+    user = modelsAI.crud.get_user(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado."
+        )
+    
+    # Obtener y devolver los proyectos del usuario
+    projects = modelsAI.crud.get_projects(user_id=user_id)
+    print(f"Proyectos encontrados para user_id={user_id}: {projects}")
+    
+    return projects  # Devuelve una lista vacía si no hay proyectos
 
 
-@app.post("/masks", tags=['Image'])
-async def procesar_masks(file: UploadFile = File(...)):
-    try:
-        image_path = f"./output/{file.filename}"
-        os.makedirs(os.path.dirname(image_path), exist_ok=True)
-        with open(image_path, "wb") as buffer:
-            buffer.write(await file.read())
-        if not os.path.exists(image_path):
-            raise HTTPException(status_code=400, detail="Error al guardar el archivo.")
-        segmentation.load_image(image_path)
-        masks = segmentation.generate_masks()
-        if masks is None:
-            raise HTTPException(status_code=500, detail="Error al generar las máscaras.")
-        masks_data = []
-        for mask in masks:
-            segmentation_data = mask.get("segmentation", None)
-            if isinstance(segmentation_data, np.ndarray):
-                counts = np.array(segmentation_data, dtype=bool)
-                encoded_matrix = run_length_encode_matrix(counts)
-                mask_efficient = compress_encoded_matrix(encoded_matrix)
-                segmentation_data = {
-                    "counts": mask_efficient,
-                    "size": segmentation_data.shape[::-1]
-                }
-            else:
-                segmentation_data = {
-                    "counts": mask.get("counts", []),
-                    "size": mask.get("size", "N/A")
-                }
-            masks_data.append(segmentation_data)
-        return JSONResponse(content={"masks": masks_data})
+@app.get(
+    "/images/{image_id}/masks/",
+    response_model=List[schemas.Mask],
+    tags=["Mask"],
+)
+def read_masks(image_id: int):
+    """
+    Devuelve las anotaciones de una imagen específica.
 
-    except Exception as e:
-        print(f"Error en procesar_imagen: {e}")  # Print error to console
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    - **image_id**: ID de la imagen.
+    """
+    return modelsAI.crud.get_masks_for_image(image_id=image_id)
 
-@app.post("/masks_points", tags=['Image'])
-async def procesar_masks(
-    points: str = Form(...),
-    labels: str = Form(...)
-):
-    try:
-        points = points.replace('(', '[').replace(')', ']')
+@app.post("/masks", tags=["Image"])
+async def procesar_masks(user_id: int, project_name: str, file: UploadFile = File(...)):
+    """
+    Sube una imagen y genera máscaras para la misma.
 
-        # Imprimir para depuración
-        print(points)
-        print(labels)
+    - **user_id**: ID del usuario.
+    - **project_name**: Nombre del proyecto.
+    - **file**: Archivo de imagen subido.
+    """
+    return modelsAI.process_image_and_generate_masks(
+        user_id=user_id, project_name=project_name, file=file
+    )
 
-        # Convertir JSON a listas de Python
-        points_data = json.loads(points)
-        labels_data = json.loads(labels)
 
-        # Convertir listas a numpy arrays
-        points_array = np.array(points_data)
-        labels_array = np.array(labels_data)
+# @app.post("/masks_points", tags=['Image'])
+# async def procesar_masks(
+#     points: str = Form(...),
+#     labels: str = Form(...)
+# ):
+#     try:
+#         points = points.replace('(', '[').replace(')', ']')
 
-        # Llamar a la función con los numpy arrays
-        masks = segmentation.predict_mask_with_points(points_array, labels_array)
-        for mask in masks:
-            mask_data ={"segmentation": mask}
-            segmentation.masks_data.append(mask_data)
-        masks_data = []
-        for mask in masks:
-            if isinstance(mask, np.ndarray):
-                area = int(np.sum(mask))  # Convertir el área a tipo nativo de Python
-                size = mask.shape[::-1]
-                encoded_matrix = run_length_encode_matrix(mask)
-                mask_efficient = compress_encoded_matrix(encoded_matrix)
-                segmentation_data = {
-                    "counts": mask_efficient,  # No lo tienes, así que lo dejamos vacío
-                    "size": size  # Tamaño de la máscara
-                }
-                masks_data.append({
-                    "segmentation": segmentation_data,
-                    "bbox": [],  # Cambiado a lista vacía
-                    "area": area,  # Área calculada de la máscara
-                    "predictedIou": 0,  # Cambiado a 0
-                    "stabilityScore": 0,  # Cambiado a 0
-                    "cropBox": [],  # Cambiado a lista vacía
-                    "pointCoords": []  # Cambiado a lista vacía
-                })
+#         # Imprimir para depuración
+#         print(points)
+#         print(labels)
 
-        # Retornar los datos de las máscaras como JSON
-        return JSONResponse(content={"masks": masks_data})
+#         # Convertir JSON a listas de Python
+#         points_data = json.loads(points)
+#         labels_data = json.loads(labels)
 
-    except Exception as e:
-        print(f"Error en procesar_imagen: {e}")  # Imprimir error en consola
-        return JSONResponse(status_code=500, content={"error": str(e)})
+#         # Convertir listas a numpy arrays
+#         points_array = np.array(points_data)
+#         labels_array = np.array(labels_data)
 
-@app.post("/lama", tags=['Image'])
-async def procesar_masks(
-    file: UploadFile = File(...),
-    mask: str = Form(...),
-    size: str = Form(...)
-):
-    try:
-        image_path = f"./output/{file.filename}"
-        os.makedirs(os.path.dirname(image_path), exist_ok=True)
-        with open(image_path, "wb") as buffer:
-            buffer.write(await file.read())
-        if not os.path.exists(image_path):
-            raise HTTPException(status_code=400, detail="Error al guardar el archivo.")
-        mask_process = decompress_encoded_matrix(mask, size)
-        segmentation.load_image(image_path)
-        masks = segmentation.generate_masks()
-        if masks is None:
-            raise HTTPException(status_code=500, detail="Error al generar las máscaras.")
-        masks_data = []
-        for mask in masks:
-            segmentation_data = mask.get("segmentation", None)
-            if isinstance(segmentation_data, np.ndarray):
-                counts = np.array(segmentation_data, dtype=bool)
-                encoded_matrix = run_length_encode_matrix(counts)
-                mask_efficient = compress_encoded_matrix(encoded_matrix)
-                segmentation_data = {
-                    "counts": mask_efficient,
-                    "size": segmentation_data.shape[::-1]
-                }
-            else:
-                segmentation_data = {
-                    "counts": mask.get("counts", []),
-                    "size": mask.get("size", "N/A")
-                }
-            masks_data.append(segmentation_data)
-        return JSONResponse(content={"masks": masks_data})
+#         # Llamar a la función con los numpy arrays
+#         masks = segmentation.predict_mask_with_points(points_array, labels_array)
+#         for mask in masks:
+#             mask_data ={"segmentation": mask}
+#             segmentation.masks_data.append(mask_data)
+#         masks_data = []
+#         for mask in masks:
+#             if isinstance(mask, np.ndarray):
+#                 area = int(np.sum(mask))  # Convertir el área a tipo nativo de Python
+#                 size = mask.shape[::-1]
+#                 encoded_matrix = run_length_encode_matrix(mask)
+#                 mask_efficient = compress_encoded_matrix(encoded_matrix)
+#                 segmentation_data = {
+#                     "counts": mask_efficient,  # No lo tienes, así que lo dejamos vacío
+#                     "size": size  # Tamaño de la máscara
+#                 }
+#                 masks_data.append({
+#                     "segmentation": segmentation_data,
+#                     "bbox": [],  # Cambiado a lista vacía
+#                     "area": area,  # Área calculada de la máscara
+#                     "predictedIou": 0,  # Cambiado a 0
+#                     "stabilityScore": 0,  # Cambiado a 0
+#                     "cropBox": [],  # Cambiado a lista vacía
+#                     "pointCoords": []  # Cambiado a lista vacía
+#                 })
 
-    except Exception as e:
-        print(f"Error en procesar_imagen: {e}")  # Print error to console
-        return JSONResponse(status_code=500, content={"error": str(e)})
+#         # Retornar los datos de las máscaras como JSON
+#         return JSONResponse(content={"masks": masks_data})
+
+#     except Exception as e:
+#         print(f"Error en procesar_imagen: {e}")  # Imprimir error en consola
+#         return JSONResponse(status_code=500, content={"error": str(e)})
+
+# Crear un nuevo proyecto
+@app.post("/projects/", response_model=schemas.Project, tags=["Project"])
+def create_project(project: schemas.ProjectCreate, user_id: int, db: Session = Depends(get_db)):
+    """
+    Crea un nuevo proyecto para un usuario específico.
+
+    - **name**: Nombre del proyecto.
+    - **user_id**: ID del usuario propietario.
+    """
+    return modelsAI.crud.create_project(project=project, user_id=user_id)
+
+# Actualizar el nombre de un proyecto
+@app.put("/projects/{project_id}", response_model=schemas.Project, tags=["Project"])
+def update_project(project_id: int, project: schemas.ProjectUpdate, db: Session = Depends(get_db)):
+    """
+    Actualiza el nombre de un proyecto.
+
+    - **name**: Nuevo nombre del proyecto.
+    """
+    db_project = modelsAI.crud.update_project(project_id=project_id, project_update=project)
+    if not db_project:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    return db_project
+
+# Eliminar un proyecto
+@app.delete("/projects/{project_id}", tags=["Project"])
+def delete_project(project_id: int, db: Session = Depends(get_db)):
+    """
+    Elimina un proyecto por su ID.
+    """
+    success = modelsAI.crud.delete_project(project_id=project_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+    return {"detail": "Proyecto eliminado exitosamente"}

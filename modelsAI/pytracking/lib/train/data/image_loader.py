@@ -81,7 +81,7 @@ def opencv_seg_loader(path):
 
 
 def imread_indexed(filename):
-    """ Load indexed image with given filename. Used to read segmentation annotations."""
+    """ Load indexed image with given filename. Used to read segmentation masks."""
 
     im = Image.open(filename)
 

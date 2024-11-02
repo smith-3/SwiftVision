@@ -1,68 +1,152 @@
 from sqlalchemy.orm import Session
-
 from . import models
 from . import schemas
 import bcrypt
 
-# CRUD para User
-# Encripta la contraseña antes de almacenar el usuario en la base de datos
-def create_user(db: Session, user: schemas.UserCreate):
-    hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())  # Hash de la contraseña
-    db_user = models.User(username=user.username, password=hashed_password.decode('utf-8'))
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+class CRUDOperations:
+    def __init__(self, db: Session):
+        self.db = db
 
-def login(db: Session, username: str, password: str):
-    user = authenticate_user(db, username, password)
-    if not user:
-        raise ValueError("Invalid username or password")
-    return user
+    # User CRUD
+    def create_user(self, user: schemas.UserCreate):
+        hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())
+        db_user = models.User(username=user.username, password=hashed_password.decode('utf-8'))
+        self.db.add(db_user)
+        self.db.commit()
+        self.db.refresh(db_user)
+        return db_user
 
+    def login(self, username: str, password: str):
+        user = self.authenticate_user(username, password)
+        if not user:
+            raise ValueError("Invalid username or password")
+        return user
 
-# Función para autenticar a un usuario comparando la contraseña con la almacenada
-def authenticate_user(db: Session, username: str, password: str):
-    user = db.query(models.User).filter(models.User.username == username).first()
-    if user is None:
-        return None
-    if not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-        return None
-    return user
+    def authenticate_user(self, username: str, password: str):
+        user = self.db.query(models.User).filter(models.User.username == username).first()
+        if user is None or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+            return None
+        return user
 
-def get_user(db: Session, user_id: int):
-    return db.query(models.User).filter(models.User.id == user_id).first()
+    def get_user(self, user_id: int):
+        return self.db.query(models.User).filter(models.User.id == user_id).first()
 
-def get_users(db: Session, skip: int = 0, limit: int = 10):
-    return db.query(models.User).offset(skip).limit(limit).all()
+    def get_user_by_username(self, username: str):
+        return self.db.query(models.User).filter(models.User.username == username).first()
 
-# database/crud.py
-def get_user_by_username(db, username: str):
-    return db.query(models.User).filter(models.User.username == username).first()
+    def get_users(self, skip: int = 0, limit: int = 10):
+        return self.db.query(models.User).offset(skip).limit(limit).all()
 
-# CRUD para Project
-def create_project(db: Session, project: schemas.ProjectCreate, user_id: int):
-    db_project = models.Project(**project.dict(), user_id=user_id)
-    db.add(db_project)
-    db.commit()
-    db.refresh(db_project)
-    return db_project
+    def update_user(self, user_id: int, user_update: schemas.UserUpdate):
+        db_user = self.get_user(user_id)
+        if db_user is None:
+            return None
+        for key, value in user_update.dict(exclude_unset=True).items():
+            setattr(db_user, key, value)
+        self.db.commit()
+        self.db.refresh(db_user)
+        return db_user
 
-def get_projects(db: Session, user_id: int):
-    return db.query(models.Project).filter(models.Project.user_id == user_id).all()
+    def delete_user(self, user_id: int):
+        db_user = self.get_user(user_id)
+        if db_user is None:
+            return None
+        self.db.delete(db_user)
+        self.db.commit()
+        return db_user
 
-# CRUD para Image
-def create_image(db: Session, image: schemas.ImageCreate, project_id: int):
-    db_image = models.Image(**image.dict(), project_id=project_id)
-    db.add(db_image)
-    db.commit()
-    db.refresh(db_image)
-    return db_image
+    # Project CRUD
+    def create_project(self, project: schemas.ProjectCreate, user_id: int):
+        db_project = models.Project(**project.dict(), user_id=user_id)
+        self.db.add(db_project)
+        self.db.commit()
+        self.db.refresh(db_project)
+        return db_project
 
-# CRUD para Annotation
-def create_annotation(db: Session, annotation: schemas.AnnotationCreate, image_id: int):
-    db_annotation = models.Annotation(**annotation.dict(), image_id=image_id)
-    db.add(db_annotation)
-    db.commit()
-    db.refresh(db_annotation)
-    return db_annotation
+    def get_projects(self, user_id: int):
+        return self.db.query(models.Project).filter(models.Project.user_id == user_id).all()
+
+    def get_project(self, project_id: int):
+        return self.db.query(models.Project).filter(models.Project.id == project_id).first()
+
+    def update_project(self, project_id: int, project_update: schemas.ProjectUpdate):
+        db_project = self.get_project(project_id)
+        if db_project is None:
+            return None
+        for key, value in project_update.dict(exclude_unset=True).items():
+            setattr(db_project, key, value)
+        self.db.commit()
+        self.db.refresh(db_project)
+        return db_project
+
+    def delete_project(self, project_id: int):
+        db_project = self.get_project(project_id)
+        if db_project is None:
+            return None
+        self.db.delete(db_project)
+        self.db.commit()
+        return db_project
+
+   # Image CRUD
+    def create_image(self, image: schemas.ImageCreate, project_id: int):
+        db_image = models.Image(**image.dict(), project_id=project_id)
+        self.db.add(db_image)
+        self.db.commit()
+        self.db.refresh(db_image)
+        return db_image
+
+    def get_images(self, project_id: int):
+        return self.db.query(models.Image).filter(models.Image.project_id == project_id).all()
+
+    def get_image(self, image_id: int):
+        return self.db.query(models.Image).filter(models.Image.id == image_id).first()
+
+    def update_image(self, image_id: int, image_update: schemas.ImageUpdate):
+        db_image = self.get_image(image_id)
+        if not db_image:
+            return None
+        for key, value in image_update.dict(exclude_unset=True).items():
+            setattr(db_image, key, value)
+        self.db.commit()
+        self.db.refresh(db_image)
+        return db_image
+
+    def delete_image(self, image_id: int):
+        db_image = self.get_image(image_id)
+        if not db_image:
+            return None
+        self.db.delete(db_image)
+        self.db.commit()
+        return db_image
+
+    # Mask CRUD
+    def create_mask(self, mask: schemas.MaskCreate, image_id: int):
+        db_mask = models.Mask(**mask.dict(), image_id=image_id)
+        self.db.add(db_mask)
+        self.db.commit()
+        self.db.refresh(db_mask)
+        return db_mask
+
+    def get_masks(self, image_id: int):
+        return self.db.query(models.Mask).filter(models.Mask.image_id == image_id).all()
+
+    def get_mask(self, mask_id: int):
+        return self.db.query(models.Mask).filter(models.Mask.id == mask_id).first()
+
+    def update_mask(self, mask_id: int, mask_update: schemas.MaskUpdate):
+        db_mask = self.get_mask(mask_id)
+        if db_mask is None:
+            return None
+        for key, value in mask_update.dict(exclude_unset=True).items():
+            setattr(db_mask, key, value)
+        self.db.commit()
+        self.db.refresh(db_mask)
+        return db_mask
+
+    def delete_mask(self, mask_id: int):
+        db_mask = self.get_mask(mask_id)
+        if db_mask is None:
+            return None
+        self.db.delete(db_mask)
+        self.db.commit()
+        return db_mask

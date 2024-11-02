@@ -31,10 +31,10 @@ class Image(Base):
     created_at = Column(TIMESTAMP, server_default=func.now())
 
     project = relationship("Project", back_populates="images")
-    annotations = relationship("Annotation", back_populates="image")
+    masks = relationship("Mask", back_populates="image")
 
-class Annotation(Base):
-    __tablename__ = 'annotations'
+class Mask(Base):
+    __tablename__ = 'masks'
 
     id = Column(Integer, primary_key=True, index=True)
     image_id = Column(Integer, ForeignKey('images.id'))
@@ -44,4 +44,4 @@ class Annotation(Base):
     point_coords = Column(String(255), nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
 
-    image = relationship("Image", back_populates="annotations")
+    image = relationship("Image", back_populates="masks")

@@ -19,7 +19,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "lama"))
 
 from modelsAI.lama.saicinpainting.evaluation.utils import move_to_device
 from modelsAI.lama.saicinpainting.training.trainers import load_checkpoint
-from modelsAI.lama.saicinpainting.evaluation.data import pad_tensor_to_modulo
+from modelsAI.lama.saicinpainting.evaluation.data import (
+    pad_tensor_to_modulo,
+)
 
 from utils import load_img_to_array, save_array_to_img
 

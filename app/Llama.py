@@ -7,15 +7,22 @@ import glob
 from pathlib import Path
 from PIL import Image
 from omegaconf import OmegaConf
+import sys
+import os
+
+# Agregar el directorio base al sys.path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 
 from modelsAI.lama.saicinpainting.evaluation.utils import move_to_device
 from modelsAI.lama.saicinpainting.training.trainers import load_checkpoint
-from modelsAI.lama.saicinpainting.evaluation.data import pad_tensor_to_modulo
+from modelsAI.lama.saicinpainting.evaluation.data import (
+    pad_tensor_to_modulo,
+)
 
 from utils import load_img_to_array, save_array_to_img
 
 
-class LamaInpaint:
+class Llama:
     def __init__(
         self, lama_config: str, lama_ckpt: str, output_dir: str, device="cuda"
     ):
@@ -50,7 +57,7 @@ class LamaInpaint:
         return model
 
     @torch.no_grad()
-    def inpaint_img(self, img: np.ndarray, mask: np.ndarray, model, mod=8):
+    def clean_img(self, img: np.ndarray, mask: np.ndarray, model, mod=8):
         assert len(mask.shape) == 2
         if np.max(mask) == 1:
             mask = mask * 255
@@ -91,17 +98,17 @@ class LamaInpaint:
         for mask_path in mask_paths:
             mask = load_img_to_array(mask_path)
             img_inpainted_p = out_dir / f"inpainted_with_{Path(mask_path).name}"
-            img_inpainted = self.inpaint_img(img, mask, model)
+            img_inpainted = self.clean_img(img, mask, model)
             save_array_to_img(img_inpainted, img_inpainted_p)
 
 
 # Uso de la clase
 # Puedes instanciar la clase y usar los métodos como sigue:
 if __name__ == "__main__":
-    lama = LamaInpaint(
+    lama = Llama(
         lama_config="./modelsAI/lama/configs/prediction/default.yaml",
         lama_ckpt="big-lama",
-        output_dir="results",
+        output_dir="output",
         device="cuda",
     )
 

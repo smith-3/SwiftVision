@@ -6,7 +6,10 @@
 
 import cv2  # type: ignore
 
-from modelsAI.segment_anything import SamAutomaticMaskGenerator, sam_model_registry
+from modelsAI.segment_anything import (
+    SamAutomaticMaskGenerator,
+    sam_model_registry,
+)
 
 import argparse
 import json

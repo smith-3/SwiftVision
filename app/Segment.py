@@ -3,18 +3,17 @@ import torchvision
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-import sys
 from modelsAI.segment_anything.segment_anything import (
     sam_model_registry,
     SamAutomaticMaskGenerator,
     SamPredictor,
 )
 
-class ImageSegmentation:
+
+class SAM:
     def __init__(self, checkpoint_path: str = "./models/weights/mobile_sam.pt"):
         self.checkpoint_path = checkpoint_path
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.image = None
         self.sam = None
         self.mask_generator = None
         self.predictor = None
@@ -30,14 +29,14 @@ class ImageSegmentation:
 
     def load_image(self, image_path: str):
         """Load an image from the given path."""
-        self.image = cv2.imread(image_path)
-        if self.image is None:
+        image = cv2.imread(image_path)
+        if image is None:
             raise ValueError(f"Could not load image from path: {image_path}")
-        self.image = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         plt.figure(figsize=(10, 10))
-        plt.imshow(self.image)
+        plt.imshow(image)
         plt.axis("off")
-        # plt.show()
+        return image
 
     def setup_model(self, model_type="vit_t"):  # vit_h para sam normal
         """Set up the SAM model and the mask generator."""
@@ -54,18 +53,22 @@ class ImageSegmentation:
         )
         self.predictor = SamPredictor(self.sam)
 
-    def generate_masks(self):
-        """Generate masks for the loaded image."""
-        if self.image is None:
-            raise ValueError("No image loaded. Please load an image first.")
-        masks = self.mask_generator.generate(self.image)
+    def generate_masks(self, image: np.ndarray):
+        """Generate masks for the given image."""
+        if image is None:
+            raise ValueError("No image provided. Please provide an image.")
+        masks = self.mask_generator.generate(image)
         sorted_anns = sorted(masks, key=(lambda x: x["area"]))
         self.masks_data = sorted_anns
         print(f"Number of masks generated: {len(masks)}")
         return self.masks_data
 
     def predict_mask_with_points(
-        self, points: np.ndarray, labels: np.ndarray, multimask_output: bool = True
+        self,
+        image: np.ndarray,
+        points: np.ndarray,
+        labels: np.ndarray,
+        multimask_output: bool = True,
     ):
         """Predict masks based on points and labels."""
         try:
@@ -88,7 +91,7 @@ class ImageSegmentation:
                     f"Labels array should be of length {len(points)}, but got {len(labels)}"
                 )
             # Realizar la predicción
-            self.predictor.set_image(self.image)
+            self.predictor.set_image(image)
             masks, scores, logits = self.predictor.predict(
                 point_coords=points,
                 point_labels=labels,
@@ -110,8 +113,12 @@ if __name__ == "__main__":
     # Usage of the ImageSegmentation class
     image_path = "./images/peloCorto.jpeg"
     segmentation = ImageSegmentation()
-    segmentation.load_image(image_path)
-    masks = segmentation.generate_masks()
+
+    # Now the image is loaded and passed as an argument
+    image = segmentation.load_image(image_path)
+
+    # Generate masks by passing the loaded image
+    masks = segmentation.generate_masks(image)
     sorted_anns = sorted(masks, key=(lambda x: x["area"]), reverse=True)
 
     # Assuming you want to change the color of the first mask to red and save it
@@ -120,5 +127,4 @@ if __name__ == "__main__":
 
     red_color = (213, 196, 161)
     output_image_path = "./output/output.png"
-
-    # segmentation.show_anns(sorted_anns)
+    # Further operations go here...
