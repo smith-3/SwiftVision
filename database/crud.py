@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from . import models
 from . import schemas
 import bcrypt
+from sqlalchemy.orm import joinedload
 
 class CRUDOperations:
     def __init__(self, db: Session):
@@ -150,3 +151,15 @@ class CRUDOperations:
         self.db.delete(db_mask)
         self.db.commit()
         return db_mask
+
+    def get_images_for_project(self, project_id: int):
+        """
+        Devuelve todas las imágenes asociadas a un proyecto específico junto con sus máscaras.
+        """
+        return (
+            self.db.query(models.Image)
+            .options(joinedload(models.Image.masks))
+            .filter(models.Image.project_id == project_id)
+            .all()
+        )
+

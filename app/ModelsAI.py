@@ -72,7 +72,7 @@ class ModelsAI:
                     bbox=bbox_str,
                     point_coords=point_coords_str
                 )
-                mask_data = self.crud.create_mask(annotation=mask_data, image_id=db_image.id)
+                mask_data = self.crud.create_mask(mask=mask_data, image_id=db_image.id)
                 masks_data.append({
                     "id": mask_data.id,  # O el atributo que necesites
                     "counts": mask_data.counts,

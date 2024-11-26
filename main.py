@@ -80,11 +80,18 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 )
 def read_images(project_id: int):
     """
-    Devuelve las imágenes de un proyecto específico.
+    Devuelve las imágenes de un proyecto específico junto con sus máscaras.
 
     - **project_id**: ID del proyecto.
     """
-    return modelsAI.crud.get_images_for_project(project_id=project_id)
+    images = modelsAI.crud.get_images_for_project(project_id=project_id)
+    if not images:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontraron imágenes para el proyecto."
+        )
+    return images
+
 
 @app.get(
     "/users/{user_id}/projects/", response_model=List[schemas.Project], tags=["Project"]
@@ -219,3 +226,44 @@ def delete_project(project_id: int, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="Proyecto no encontrado")
     return {"detail": "Proyecto eliminado exitosamente"}
+
+
+@app.get("/users/{user_id}", response_model=schemas.User, tags=["User"])
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    """
+    Devuelve los datos de un usuario específico.
+
+    - **user_id**: ID del usuario.
+    """
+    user = modelsAI.crud.get_user(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado."
+        )
+    return user
+
+@app.get("/users", response_model=List[schemas.User], tags=["User"])
+def get_all_users(db: Session = Depends(get_db)):
+    """
+    Devuelve una lista de todos los usuarios registrados.
+
+    - **Respuesta**: Lista de objetos de usuario.
+    """
+    users = modelsAI.crud.get_users()
+    if not users:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontraron usuarios."
+        )
+    return users
+
+@app.get("/images/{image_id}/download", tags=["Image"])
+def download_image(image_id: int):
+    """
+    Descarga la imagen binaria por su ID.
+    """
+    image = modelsAI.crud.get_image(image_id)
+    if not image:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada.")
+    return StreamingResponse(io.BytesIO(image.base_image), media_type="image/png")
