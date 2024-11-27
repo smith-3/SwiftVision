@@ -11,16 +11,16 @@ class CRUDOperations:
     # User CRUD
     def create_user(self, user: schemas.UserCreate):
         hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())
-        db_user = models.User(username=user.username, password=hashed_password.decode('utf-8'))
+        db_user = models.User(username=user.username,email=user.email, password=hashed_password.decode('utf-8'))
         self.db.add(db_user)
         self.db.commit()
         self.db.refresh(db_user)
         return db_user
 
-    def login(self, username: str, password: str):
-        user = self.authenticate_user(username, password)
-        if not user:
-            raise ValueError("Invalid username or password")
+    def authenticate_user_by_email(self, email: str, password: str):
+        user = self.get_user_by_email(email)
+        if user is None or not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+            return None
         return user
 
     def authenticate_user(self, username: str, password: str):
@@ -158,8 +158,17 @@ class CRUDOperations:
         """
         return (
             self.db.query(models.Image)
-            .options(joinedload(models.Image.masks))
             .filter(models.Image.project_id == project_id)
             .all()
         )
 
+    def get_masks_for_image(self, image_id: int):
+        """
+        Devuelve todas las máscaras asociadas a una imagen específica.
+
+        - **image_id**: ID de la imagen.
+        """
+        return self.db.query(models.Mask).filter(models.Mask.image_id == image_id).all()
+
+    def get_user_by_email(self, email: str):
+        return self.db.query(models.User).filter(models.User.email == email).first()

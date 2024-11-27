@@ -1,10 +1,12 @@
 from typing import List
-from fastapi import Depends, FastAPI, File, UploadFile, HTTPException, status
+from fastapi import Depends, FastAPI, File, UploadFile, HTTPException, status, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from requests import Session
 from app.ModelsAI import ModelsAI  # Importa solo la clase
 from database import schemas
 from database.database import get_db
+from fastapi.responses import StreamingResponse
+import io
 
 # Initialize FastAPI application
 # Inicialización de la aplicación FastAPI con metadatos
@@ -41,46 +43,51 @@ async def startup_event():
     print("ModelsAI initialized")
 
 @app.post("/login", response_model=schemas.User, tags=["Authentication"])
-def login(user_credentials: schemas.UserCreate):
+def login(user_credentials: schemas.Login):
     """
-    Autentica un usuario mediante su nombre de usuario y contraseña.
+    Autentica un usuario mediante su correo y contraseña.
 
-    - **username**: Nombre de usuario.
+    - **email**: Correo del usuario.
     - **password**: Contraseña del usuario.
     """
-    user = modelsAI.crud.authenticate_user(
-        user_credentials.username, user_credentials.password
+    print(user_credentials)
+    user = modelsAI.crud.authenticate_user_by_email(
+        email=user_credentials.email, password=user_credentials.password
     )
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Nombre de usuario o contraseña inválidos.",
+            detail="Correo o contraseña inválidos.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
 
 @app.post("/register", response_model=schemas.User, tags=["Authentication"])
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     """
     Registra un nuevo usuario.
 
-    - **username**: Nombre de usuario único.
+    - **email**: Correo único del usuario.
     - **password**: Contraseña del usuario.
     """
-    db_user = modelsAI.crud.get_user_by_username(username=user.username)
+    print(user)
+    db_user = modelsAI.crud.get_user_by_email(email=user.email)
     if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El nombre de usuario ya está registrado."
+            detail="El correo ya está registrado."
         )
     return modelsAI.crud.create_user(user=user)
 
 @app.get(
-    "/projects/{project_id}/images/", response_model=List[schemas.Image], tags=["Image"]
+    "/projects/{project_id}/images/",
+    response_model=List[schemas.ImageBaseNoBinary],
+    tags=["Image"]
 )
 def read_images(project_id: int):
     """
-    Devuelve las imágenes de un proyecto específico junto con sus máscaras.
+    Devuelve las imágenes de un proyecto específico junto con sus máscaras, excluyendo los datos binarios.
 
     - **project_id**: ID del proyecto.
     """
@@ -91,7 +98,6 @@ def read_images(project_id: int):
             detail="No se encontraron imágenes para el proyecto."
         )
     return images
-
 
 @app.get(
     "/users/{user_id}/projects/", response_model=List[schemas.Project], tags=["Project"]
@@ -267,3 +273,20 @@ def download_image(image_id: int):
     if not image:
         raise HTTPException(status_code=404, detail="Imagen no encontrada.")
     return StreamingResponse(io.BytesIO(image.base_image), media_type="image/png")
+
+
+
+@app.get("/images/{image_id}/masks/", response_model=List[schemas.Mask], tags=["Mask"])
+def read_masks(image_id: int, db: Session = Depends(get_db)):
+    """
+    Devuelve todas las máscaras asociadas a una imagen específica.
+
+    - **image_id**: ID de la imagen.
+    """
+    masks = modelsAI.crud.get_masks_for_image(image_id)
+    if not masks:
+        raise HTTPException(
+            status_code=404, 
+            detail="No se encontraron máscaras para esta imagen."
+        )
+    return masks

@@ -1,7 +1,6 @@
-from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
-from base64 import b64encode
+from pydantic import BaseModel, EmailStr
 
 class MaskBase(BaseModel):
     counts: str
@@ -19,6 +18,8 @@ class Mask(MaskBase):
 
     class Config:
         from_attributes = True
+        orm_mode = True  # Habilita la conversión automática desde objetos ORM
+
 
 class ImageBase(BaseModel):
     base_image: bytes
@@ -26,29 +27,14 @@ class ImageBase(BaseModel):
 class ImageCreate(ImageBase):
     pass
 
-class Image(BaseModel):
+class ImageBaseNoBinary(BaseModel):
     id: int
     project_id: int
     created_at: datetime
-    base_image: str  # Base64 codificado
     masks: List[Mask] = []
 
     class Config:
         orm_mode = True
-
-    @staticmethod
-    def encode_image_to_base64(binary_data: bytes) -> str:
-        """Convierte los datos binarios a una cadena Base64."""
-        return b64encode(binary_data).decode('utf-8')
-
-    @classmethod
-    def from_orm(cls, obj):
-        """Sobrescribe la conversión para codificar 'base_image' a Base64."""
-        obj_dict = super().from_orm(obj).dict()
-        if obj.base_image:
-            obj_dict["base_image"] = cls.encode_image_to_base64(obj.base_image)
-        return cls.parse_obj(obj_dict)
-
 
 class ProjectBase(BaseModel):
     name: str
@@ -64,7 +50,7 @@ class ImageBaseNoBinary(BaseModel):
 
     class Config:
         from_attributes = True
-
+        
 
 class Project(ProjectBase):
     id: int
@@ -76,7 +62,13 @@ class Project(ProjectBase):
         from_attributes = True
 
 class UserBase(BaseModel):
-    username: str
+    email: str  # Ahora se usa email en lugar de username
+    username: Optional[str] = None  # Mantener opcional por compatibilidad
+
+class Login(BaseModel):
+    email: str  # Ahora se usa email en lugar de username
+    password: str
+
 
 class UserCreate(UserBase):
     password: str
