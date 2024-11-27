@@ -5,7 +5,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 from typing import Any, Dict, List
 import torch
-from models_ai.segment_anything import SamPredictor, sam_model_registry
+from modelsAI.segment_anything import SamPredictor, sam_model_registry
 from utils import (
     load_img_to_array,
     save_array_to_img,
