@@ -267,3 +267,49 @@ def delete_image(image_id: int, db: Session = Depends(get_db)):
         )
     return {"detail": "Imagen eliminada exitosamente"}
 
+@app.post("/masks_points", tags=["Mask"])
+def upload_mask(
+    project_id: int = Form(...),
+    image_id: int = Form(...),
+    counts: str = Form(...),
+    size: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Recibe la máscara comprimida RLE (counts) y el tamaño (size),
+    y la guarda en la base de datos asociada a la imagen y proyecto.
+    """
+    # Parsear el JSON recibido en `counts` (run-length encoding comprimido)
+    try:
+        compressed_rows = json.loads(counts)  # List[CompressedRow], p. ej.
+
+        # size vendrá con un formato "(width, height)" o algo similar:
+        # Ej: "(640, 480)"
+        size_str = size.strip().replace("(", "").replace(")", "")
+        width, height = [int(s) for s in size_str.split(",")]
+
+        # En este ejemplo, guardamos directamente `counts` y `size` como string en la BD.
+        # Podrías decodificarlo y almacenarlo con un formato diferente según tus necesidades.
+
+        new_mask_data = MaskCreate(
+            counts=counts,     # el string JSON comprimido
+            size=size,         # "(width, height)"
+            bbox="[]",         # si no tienes bounding box, usa "[]"
+            point_coords="[]", # si no tienes coords, usa "[]"
+            active=True        # o false, depende de tu lógica
+        )
+
+        # Creación de la máscara en la BD con tu capa de CRUD
+        mask_db = ModelsAI(db).crud.create_mask(mask=new_mask_data, image_id=image_id)
+
+        return {
+            "detail": "Mask uploaded successfully",
+            "mask_id": mask_db.id,
+            "project_id": project_id,
+            "image_id": image_id
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Error al procesar la máscara: {str(e)}"
+        )
