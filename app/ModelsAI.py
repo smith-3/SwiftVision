@@ -82,7 +82,7 @@ class ModelsAI:
                 })
             print("Masks Data:", masks_data)  # Imprimir para depuración
 
-            return JSONResponse(content={"masks": masks_data})
+            return JSONResponse(content={"id": db_project.id})
 
         except HTTPException as he:
             raise he  # Re-raise HTTPException to be handled by FastAPI

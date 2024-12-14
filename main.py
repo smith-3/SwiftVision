@@ -81,13 +81,13 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return modelsAI.crud.create_user(user=user)
 
 @app.get(
-    "/projects/{project_id}/images/",
+    "/images/{project_id}/",
     response_model=List[schemas.ImageBaseNoBinary],
     tags=["Image"]
 )
 def read_images(project_id: int):
     """
-    Devuelve las imágenes de un proyecto específico junto con sus máscaras, excluyendo los datos binarios.
+    Devuelve las imágenes de un proyecto específico 
 
     - **project_id**: ID del proyecto.
     """
@@ -100,7 +100,7 @@ def read_images(project_id: int):
     return images
 
 @app.get(
-    "/users/{user_id}/projects/", response_model=List[schemas.Project], tags=["Project"]
+    "/projects/{user_id}/", response_model=List[schemas.Project], tags=["Project"]
 )
 def read_projects(user_id: int):
     # Verificar si el usuario existe
@@ -131,7 +131,8 @@ def read_masks(image_id: int):
     """
     return modelsAI.crud.get_masks_for_image(image_id=image_id)
 
-@app.post("/masks", tags=["Image"])
+# Crear un nuevo proyecto
+@app.post("/projects", tags=["Project"])
 async def procesar_masks(user_id: int, project_name: str, file: UploadFile = File(...)):
     """
     Sube una imagen y genera máscaras para la misma.
@@ -143,71 +144,6 @@ async def procesar_masks(user_id: int, project_name: str, file: UploadFile = Fil
     return modelsAI.process_image_and_generate_masks(
         user_id=user_id, project_name=project_name, file=file
     )
-
-
-# @app.post("/masks_points", tags=['Image'])
-# async def procesar_masks(
-#     points: str = Form(...),
-#     labels: str = Form(...)
-# ):
-#     try:
-#         points = points.replace('(', '[').replace(')', ']')
-
-#         # Imprimir para depuración
-#         print(points)
-#         print(labels)
-
-#         # Convertir JSON a listas de Python
-#         points_data = json.loads(points)
-#         labels_data = json.loads(labels)
-
-#         # Convertir listas a numpy arrays
-#         points_array = np.array(points_data)
-#         labels_array = np.array(labels_data)
-
-#         # Llamar a la función con los numpy arrays
-#         masks = segmentation.predict_mask_with_points(points_array, labels_array)
-#         for mask in masks:
-#             mask_data ={"segmentation": mask}
-#             segmentation.masks_data.append(mask_data)
-#         masks_data = []
-#         for mask in masks:
-#             if isinstance(mask, np.ndarray):
-#                 area = int(np.sum(mask))  # Convertir el área a tipo nativo de Python
-#                 size = mask.shape[::-1]
-#                 encoded_matrix = run_length_encode_matrix(mask)
-#                 mask_efficient = compress_encoded_matrix(encoded_matrix)
-#                 segmentation_data = {
-#                     "counts": mask_efficient,  # No lo tienes, así que lo dejamos vacío
-#                     "size": size  # Tamaño de la máscara
-#                 }
-#                 masks_data.append({
-#                     "segmentation": segmentation_data,
-#                     "bbox": [],  # Cambiado a lista vacía
-#                     "area": area,  # Área calculada de la máscara
-#                     "predictedIou": 0,  # Cambiado a 0
-#                     "stabilityScore": 0,  # Cambiado a 0
-#                     "cropBox": [],  # Cambiado a lista vacía
-#                     "pointCoords": []  # Cambiado a lista vacía
-#                 })
-
-#         # Retornar los datos de las máscaras como JSON
-#         return JSONResponse(content={"masks": masks_data})
-
-#     except Exception as e:
-#         print(f"Error en procesar_imagen: {e}")  # Imprimir error en consola
-#         return JSONResponse(status_code=500, content={"error": str(e)})
-
-# Crear un nuevo proyecto
-@app.post("/projects/", response_model=schemas.Project, tags=["Project"])
-def create_project(project: schemas.ProjectCreate, user_id: int, db: Session = Depends(get_db)):
-    """
-    Crea un nuevo proyecto para un usuario específico.
-
-    - **name**: Nombre del proyecto.
-    - **user_id**: ID del usuario propietario.
-    """
-    return modelsAI.crud.create_project(project=project, user_id=user_id)
 
 # Actualizar el nombre de un proyecto
 @app.put("/projects/{project_id}", response_model=schemas.Project, tags=["Project"])
