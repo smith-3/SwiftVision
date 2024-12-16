@@ -61,17 +61,18 @@ def setup_args(parser):
 if __name__ == "__main__":
     """Example usage:
     python remove_anything.py \
-        --input_img FA_demo/FA1_dog.png \
+        --input_img image_1.png \
         --coords_type key_in \
         --point_coords 750 500 \
         --point_labels 1 \
         --dilate_kernel_size 15 \
-        --output_dir ./results \
+        --output_dir ./saved_images \
         --sam_model_type "vit_h" \
         --sam_ckpt sam_vit_h_4b8939.pth \
-        --lama_config lama/configs/prediction/default.yaml \
+        --lama_config ./modelsAI/lama/configs/prediction/default.yaml \
         --lama_ckpt big-lama 
     """
+    
     parser = argparse.ArgumentParser()
     setup_args(parser)
     args = parser.parse_args(sys.argv[1:])

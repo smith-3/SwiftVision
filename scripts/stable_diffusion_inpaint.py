@@ -92,19 +92,19 @@ if __name__ == "__main__":
         --text_prompt "a teddy bear on a bench" \
         --output_dir results 
     """
-    parser = argparse.ArgumentParser()
-    setup_args(parser)
-    args = parser.parse_args(sys.argv[1:])
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    # parser = argparse.ArgumentParser()
+    # setup_args(parser)
+    # args = parser.parse_args(sys.argv[1:])
+    # device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    if args.deterministic:
-        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
-        torch.use_deterministic_algorithms(True)
+    # if args.deterministic:
+    #     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+    #     torch.use_deterministic_algorithms(True)
 
-    img_stem = Path(args.input_img).stem
-    mask_ps = sorted(glob.glob(args.input_mask_glob))
-    out_dir = Path(args.output_dir) / img_stem
-    out_dir.mkdir(parents=True, exist_ok=True)
+    # img_stem = Path(args.input_img).stem
+    # mask_ps = sorted(glob.glob(args.input_mask_glob))
+    # out_dir = Path(args.output_dir) / img_stem
+    # out_dir.mkdir(parents=True, exist_ok=True)
 
     img = load_img_to_array(args.input_img)
     for mask_p in mask_ps:
