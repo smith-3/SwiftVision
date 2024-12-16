@@ -157,6 +157,21 @@ async def procesar_masks(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/process_inpainting_with_mask", tags=["Edit"])
+def process_inpainting(project_id: int, image_id: int, mask_id: int, db: Session = Depends(get_db)):
+    result = modelsAI.process_inpainting_with_mask(project_id, image_id, mask_id)
+    return result
+
+@app.get("/generate_image", tags=["Edit"])
+def generate_image(project_id: int, image_id: int, mask_id: int,  promt: str, db: Session = Depends(get_db)):
+    result = modelsAI.generate_image(project_id, image_id, mask_id,promt)
+    return result
+
+@app.get("/generate_image_backgraund", tags=["Edit"])
+def generate_image(project_id: int, image_id: int, mask_id: int,  promt: str, db: Session = Depends(get_db)):
+    result = modelsAI.generate_background(project_id, image_id, mask_id,promt)
+    return result
+
 # Actualizar el nombre de un proyecto
 @app.put("/projects/{project_id}", response_model=schemas.Project, tags=["Project"])
 def update_project(project_id: int, project: schemas.ProjectUpdate, db: Session = Depends(get_db)):

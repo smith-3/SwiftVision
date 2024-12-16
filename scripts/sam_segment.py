@@ -5,7 +5,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 from typing import Any, Dict, List
 import torch
-from modelsAI.segment_anything import SamPredictor, sam_model_registry
+from modelsAI.segment_anything.segment_anything import SamPredictor, sam_model_registry
 from utils import (
     load_img_to_array,
     save_array_to_img,
@@ -36,13 +36,11 @@ def predict_masks_with_sam(
     )
     return masks, scores, logits
 
-
 def build_sam_model(model_type: str, ckpt_p: str, device="cuda"):
     sam = sam_model_registry[model_type](checkpoint=ckpt_p)
     sam.to(device=device)
     predictor = SamPredictor(sam)
     return predictor
-
 
 def setup_args(parser):
     parser.add_argument(

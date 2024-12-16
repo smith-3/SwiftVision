@@ -30,17 +30,41 @@ def compress_encoded_matrix(encoded_matrix):
     return compressed_counts
 
 def decompress_encoded_matrix(compressed_counts, shape):
+
     decoded_matrix = np.zeros(shape, dtype=bool)
-    y = 0
-    for row_tuple, count in compressed_counts:
+    y = 0  # Índice de la fila que se está llenando en la matriz final
+
+
+    for index, (row_tuple, count) in enumerate(compressed_counts):
+     
+
+        # Reconstruir una fila decodificada basada en las tuplas (longitud, valor)
         decoded_row = []
         for length, value in row_tuple:
             decoded_row.extend([value] * length)
+
+        # Convertir a numpy array
         row_np = np.array(decoded_row, dtype=bool)
-        for _ in range(count):
+        
+
+        # Validar que el ancho de la fila coincida con el de la matriz esperada
+        if row_np.shape[0] != shape[1]:
+            raise ValueError(f"La fila decodificada tiene un ancho inesperado. Esperado: {shape[1]}, Obtenido: {row_np.shape[0]}")
+
+        # Repetir la fila 'count' veces y añadirla a la matriz final
+        for repeat in range(count):
+            if y >= shape[0]:
+                raise ValueError("Se ha excedido el número esperado de filas en la matriz decodificada.")
             decoded_matrix[y] = row_np
+            
             y += 1
+
+    # Validar que se llenaron todas las filas esperadas
+    if y != shape[0]:
+        raise ValueError(f"El número de filas decodificadas no coincide con el esperado. Esperado: {shape[0]}, Obtenido: {y}")
+
     return decoded_matrix
+
 
 def combine_boolean_matrices(matrices):
     """

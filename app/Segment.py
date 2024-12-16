@@ -128,3 +128,4 @@ if __name__ == "__main__":
     red_color = (213, 196, 161)
     output_image_path = "./output/output.png"
     # Further operations go here...
+
