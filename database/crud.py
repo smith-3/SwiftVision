@@ -154,11 +154,12 @@ class CRUDOperations:
 
     def get_images_for_project(self, project_id: int):
         """
-        Devuelve todas las imágenes asociadas a un proyecto específico junto con sus máscaras.
+        Devuelve todas las imágenes asociadas a un proyecto específico ordenadas por ID descendente.
         """
         return (
             self.db.query(models.Image)
             .filter(models.Image.project_id == project_id)
+            .order_by(models.Image.id.desc())  # Ordena por ID en orden descendente
             .all()
         )
 

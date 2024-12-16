@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import Depends, FastAPI, File, UploadFile, HTTPException, status, APIRouter
+from fastapi import Depends, FastAPI, File, UploadFile, HTTPException, status, APIRouter, Form
 from fastapi.middleware.cors import CORSMiddleware
 from requests import Session
 from app.ModelsAI import ModelsAI  # Importa solo la clase
@@ -133,7 +133,11 @@ def read_masks(image_id: int):
 
 # Crear un nuevo proyecto
 @app.post("/projects", tags=["Project"])
-async def procesar_masks(user_id: int, project_name: str, file: UploadFile = File(...)):
+async def procesar_masks(
+    user_id: int = Form(...), 
+    project_name: str = Form(...), 
+    file: UploadFile = File(...)
+):
     """
     Sube una imagen y genera máscaras para la misma.
 
@@ -141,9 +145,17 @@ async def procesar_masks(user_id: int, project_name: str, file: UploadFile = Fil
     - **project_name**: Nombre del proyecto.
     - **file**: Archivo de imagen subido.
     """
-    return modelsAI.process_image_and_generate_masks(
-        user_id=user_id, project_name=project_name, file=file
-    )
+    try:
+        # Procesar el archivo y generar máscaras
+        print(user_id, project_name)
+        result = modelsAI.process_image_and_generate_masks(
+            user_id=user_id, 
+            project_name=project_name, 
+            file=file
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Actualizar el nombre de un proyecto
 @app.put("/projects/{project_id}", response_model=schemas.Project, tags=["Project"])
@@ -226,3 +238,17 @@ def read_masks(image_id: int, db: Session = Depends(get_db)):
             detail="No se encontraron máscaras para esta imagen."
         )
     return masks
+
+@app.delete("/images/{image_id}", tags=["Image"])
+def delete_image(image_id: int, db: Session = Depends(get_db)):
+    """
+    Elimina una imagen específica por su ID.
+    """
+    success = modelsAI.crud.delete_image(image_id=image_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="Imagen no encontrada."
+        )
+    return {"detail": "Imagen eliminada exitosamente"}
+
