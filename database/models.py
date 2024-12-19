@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, LargeBinary, String, ForeignKey, Text, Float, TIMESTAMP, func
+from sqlalchemy import Column, Integer, LargeBinary, String, ForeignKey, Text, Float, TIMESTAMP, func, JSON
 from sqlalchemy.orm import relationship
 from .database import Base
 class User(Base):
@@ -39,10 +39,10 @@ class Mask(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     image_id = Column(Integer, ForeignKey('images.id'))
-    counts = Column(Text, nullable=False)
-    size = Column(String(255), nullable=True)
-    bbox = Column(String(255), nullable=True)
-    point_coords = Column(String(255), nullable=True)
+    counts = Column(JSON, nullable=False)
+    size = Column(JSON, nullable=False)           # Almacena size como JSON
+    bbox = Column(JSON, nullable=False)           # Almacena bbox como JSON
+    point_coords = Column(JSON, nullable=False)   # Almacena point_coords como JSON
     created_at = Column(TIMESTAMP, server_default=func.now())
 
     image = relationship("Image", back_populates="masks")

@@ -1,15 +1,19 @@
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel, EmailStr
+from typing import List, Union
 
 class MaskBase(BaseModel):
-    counts: str
-    size: str
-    bbox: Optional[str]
-    point_coords: Optional[str]
+    counts: List[List[Union[List[List[int]], int]]]  # Counts como lista serializable
+    size: List[int]                      # [width, height]
+    bbox: List[int]                      # [x, y, width, height]
+    point_coords: List[List[float]]      # Lista de [x, y]
 
-class MaskCreate(MaskBase):
-    pass
+class MaskCreate(BaseModel):
+    counts: List[List[Union[List[List[int]], int]]]  # Counts como lista serializable
+    size: List[int]                                  # [width, height]
+    bbox: List[float]                                # Lista de floats
+    point_coords: List[List[float]]                  # Coordenadas en listas de floats
 
 class Mask(MaskBase):
     id: int

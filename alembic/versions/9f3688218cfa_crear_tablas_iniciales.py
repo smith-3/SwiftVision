@@ -1,8 +1,8 @@
-"""Initial migration
+"""Crear tablas iniciales
 
-Revision ID: 6c6b1f29cdbe
+Revision ID: 9f3688218cfa
 Revises: 
-Create Date: 2024-10-27 09:01:35.215683
+Create Date: 2024-12-18 18:44:34.749358
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '6c6b1f29cdbe'
+revision: str = '9f3688218cfa'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -23,10 +23,11 @@ def upgrade() -> None:
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('username', sa.String(length=255), nullable=False),
+    sa.Column('email', sa.String(length=255), nullable=False),
     sa.Column('password', sa.String(length=255), nullable=False),
     sa.Column('created_at', sa.TIMESTAMP(), server_default=sa.text('now()'), nullable=True),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('username')
+    sa.UniqueConstraint('email')
     )
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
     op.create_table('projects',
@@ -50,10 +51,10 @@ def upgrade() -> None:
     op.create_table('masks',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('image_id', sa.Integer(), nullable=True),
-    sa.Column('counts', sa.Text(), nullable=False),
-    sa.Column('size', sa.String(length=255), nullable=True),
-    sa.Column('bbox', sa.String(length=255), nullable=True),
-    sa.Column('point_coords', sa.String(length=255), nullable=True),
+    sa.Column('counts', sa.JSON(), nullable=False),
+    sa.Column('size', sa.JSON(), nullable=False),
+    sa.Column('bbox', sa.JSON(), nullable=False),
+    sa.Column('point_coords', sa.JSON(), nullable=False),
     sa.Column('created_at', sa.TIMESTAMP(), server_default=sa.text('now()'), nullable=True),
     sa.ForeignKeyConstraint(['image_id'], ['images.id'], ),
     sa.PrimaryKeyConstraint('id')

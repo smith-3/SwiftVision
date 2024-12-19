@@ -6,9 +6,9 @@ from app.ModelsAI import ModelsAI  # Importa solo la clase
 from database import schemas
 from database.database import get_db
 from fastapi.responses import StreamingResponse
+from PIL import Image
 import io
 
-# Initialize FastAPI application
 # Inicialización de la aplicación FastAPI con metadatos
 app = FastAPI(
     title="SWIFT VISION",
@@ -227,6 +227,7 @@ def get_all_users(db: Session = Depends(get_db)):
         )
     return users
 
+
 @app.get("/images/{image_id}/download", tags=["Image"])
 def download_image(image_id: int):
     """
@@ -235,8 +236,16 @@ def download_image(image_id: int):
     image = modelsAI.crud.get_image(image_id)
     if not image:
         raise HTTPException(status_code=404, detail="Imagen no encontrada.")
-    return StreamingResponse(io.BytesIO(image.base_image), media_type="image/png")
+    
+    def image_generator(image_data):
+        chunk_size = 1024 * 64  # Enviar datos en bloques de 64 KB
+        for i in range(0, len(image_data), chunk_size):
+            yield image_data[i:i + chunk_size]
 
+    return StreamingResponse(
+        image_generator(image.base_image),
+        media_type="image/png"
+    )
 
 
 @app.get("/images/{image_id}/masks/", response_model=List[schemas.Mask], tags=["Mask"])
@@ -313,3 +322,22 @@ def upload_mask(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Error al procesar la máscara: {str(e)}"
         )
+
+@app.get("/images/{image_id}/thumbnail", tags=["Image"])
+def download_thumbnail(image_id: int):
+    """
+    Descarga una miniatura de la imagen.
+    """
+    image = modelsAI.crud.get_image(image_id)
+    if not image:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada.")
+    
+    thumbnail = generate_thumbnail(image.base_image)
+    return StreamingResponse(io.BytesIO(thumbnail), media_type="image/png")
+
+def generate_thumbnail(image_data: bytes):
+    with Image.open(io.BytesIO(image_data)) as img:
+        img.thumbnail((100, 100))  # Cambiar dimensiones según necesidad
+        thumbnail_io = io.BytesIO()
+        img.save(thumbnail_io, format="PNG")
+        return thumbnail_io.getvalue()

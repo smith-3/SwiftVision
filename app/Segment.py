@@ -8,7 +8,9 @@ from modelsAI.segment_anything.segment_anything import (
     SamAutomaticMaskGenerator,
     SamPredictor,
 )
+import logging
 
+logger = logging.getLogger(__name__)
 
 class SAM:
     def __init__(self, checkpoint_path: str = "./models/weights/mobile_sam.pt"):
@@ -18,14 +20,14 @@ class SAM:
         self.mask_generator = None
         self.predictor = None
         self.masks_data = None
-        self.print_versions()
         self.setup_model()
+        self.print_versions()
 
     def print_versions(self):
         """Print versions of PyTorch, Torchvision, and CUDA availability."""
-        print("PyTorch version:", torch.__version__)
-        print("Torchvision version:", torchvision.__version__)
-        print("CUDA is available:", torch.cuda.is_available())
+        logger.info(f"PyTorch version: {torch.__version__}")
+        logger.info(f"Torchvision version: {torchvision.__version__}")
+        logger.info(f"CUDA is available: {torch.cuda.is_available()}")
 
     def load_image(self, image_path: str):
         """Load an image from the given path."""
@@ -52,15 +54,16 @@ class SAM:
             min_mask_region_area=500,  # Requires open-cv to run post-processing 100
         )
         self.predictor = SamPredictor(self.sam)
+        logger.info("SAM model initialized successfully.")
 
     def generate_masks(self, image: np.ndarray):
         """Generate masks for the given image."""
         if image is None:
             raise ValueError("No image provided. Please provide an image.")
         masks = self.mask_generator.generate(image)
-        sorted_anns = sorted(masks, key=(lambda x: x["area"]))
+        sorted_anns = sorted(masks, key=lambda x: x["area"])
         self.masks_data = sorted_anns
-        print(f"Number of masks generated: {len(masks)}")
+        logger.info(f"Number of masks generated: {len(masks)}")
         return self.masks_data
 
     def predict_mask_with_points(
@@ -72,24 +75,16 @@ class SAM:
     ):
         """Predict masks based on points and labels."""
         try:
-            # Verificar que los puntos y las etiquetas son arrays de NumPy
+            # Validaciones
             if not isinstance(points, np.ndarray):
-                raise TypeError(
-                    f"Expected points to be a NumPy array, but got {type(points)}"
-                )
+                raise TypeError(f"Expected points to be a NumPy array, but got {type(points)}")
             if not isinstance(labels, np.ndarray):
-                raise TypeError(
-                    f"Expected labels to be a NumPy array, but got {type(labels)}"
-                )
-            # Verificar dimensiones adecuadas de los arrays
+                raise TypeError(f"Expected labels to be a NumPy array, but got {type(labels)}")
             if points.ndim != 2 or points.shape[1] != 2:
-                raise ValueError(
-                    f"Points array should have shape (N, 2), but got {points.shape}"
-                )
+                raise ValueError(f"Points array should have shape (N, 2), but got {points.shape}")
             if labels.ndim != 1 or len(labels) != len(points):
-                raise ValueError(
-                    f"Labels array should be of length {len(points)}, but got {len(labels)}"
-                )
+                raise ValueError(f"Labels array should be of length {len(points)}, but got {len(labels)}")
+
             # Realizar la predicción
             self.predictor.set_image(image)
             masks, scores, logits = self.predictor.predict(
@@ -98,34 +93,9 @@ class SAM:
                 multimask_output=multimask_output,
             )
             return masks
-        except TypeError as te:
-            print(f"Type Error in predict_mask_with_points: {te}")
-            raise
-        except ValueError as ve:
-            print(f"Value Error in predict_mask_with_points: {ve}")
+        except (TypeError, ValueError) as e:
+            logger.error(f"Error in predict_mask_with_points: {e}")
             raise
         except Exception as e:
-            print(f"Unexpected error in predict_mask_with_points: {e}")
+            logger.exception("Unexpected error in predict_mask_with_points.")
             raise
-
-
-if __name__ == "__main__":
-    # Usage of the ImageSegmentation class
-    image_path = "./images/peloCorto.jpeg"
-    segmentation = ImageSegmentation()
-
-    # Now the image is loaded and passed as an argument
-    image = segmentation.load_image(image_path)
-
-    # Generate masks by passing the loaded image
-    masks = segmentation.generate_masks(image)
-    sorted_anns = sorted(masks, key=(lambda x: x["area"]), reverse=True)
-
-    # Assuming you want to change the color of the first mask to red and save it
-    hair_mask = sorted_anns[2]
-    segmentation_mask = hair_mask["segmentation"]
-
-    red_color = (213, 196, 161)
-    output_image_path = "./output/output.png"
-    # Further operations go here...
-
