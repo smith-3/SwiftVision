@@ -1,5 +1,6 @@
 # compress_descompress.py
 
+import cv2
 import numpy as np
 import json
 from typing import List, Tuple
@@ -141,6 +142,41 @@ def decompress_encoded_matrix(compressed_counts: List[Tuple[List[Tuple[int, int]
 
     logger.info(f"Descompresión completada con éxito. Shape final: {decoded_matrix.shape}")
     return decoded_matrix
+
+
+def compress_image_bytes(image_bytes: bytes, max_side: int = 1200) -> bytes:
+    # Convertir los bytes a una imagen
+    np_array = np.frombuffer(image_bytes, dtype=np.uint8)
+    image = cv2.imdecode(np_array, cv2.IMREAD_COLOR)  # cv2.IMREAD_COLOR para cargar en BGR
+    
+    if image is None:
+        raise ValueError("No se pudo decodificar la imagen desde los bytes.")
+    
+    # Obtener las dimensiones originales
+    height, width = image.shape[:2]
+    print(f"Tamaño original de la imagen: {width}x{height}")
+    
+    # Verificar si es necesario redimensionar
+    if max(height, width) > max_side:
+        # Calcular el factor de escalado
+        scaling_factor = max_side / max(height, width)
+        new_width = int(width * scaling_factor)
+        new_height = int(height * scaling_factor)
+        
+        # Redimensionar la imagen
+        image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+        print(f"Tamaño de la imagen después de redimensionar: {new_width}x{new_height}")
+    else:
+        print("La imagen no requiere redimensionamiento.")
+    
+    # Convertir la imagen comprimida de nuevo a bytes
+    # Usamos cv2.imencode para codificar la imagen de vuelta en bytes
+    _, image_encoded = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 90])  # 90 es el nivel de calidad
+
+    # Convertir a bytes y devolver
+    compressed_image_bytes = image_encoded.tobytes()
+    
+    return compressed_image_bytes
 
 
 if __name__ == "__main__":

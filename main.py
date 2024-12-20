@@ -138,7 +138,7 @@ async def create_mask(
     )
 
     # Llamar a la función para crear la máscara en la base de datos
-    db_mask = ModelsAI(db).crud.create_mask(mask=mask_data, image_id=image_id)
+    db_mask = modelsAI.crud.create_mask(mask=mask_data, image_id=image_id)
 
     return db_mask
 
@@ -352,7 +352,7 @@ def upload_mask(
         )
 
         # Creación de la máscara en la BD con tu capa de CRUD
-        mask_db = ModelsAI(db).crud.create_mask(mask=new_mask_data, image_id=image_id)
+        mask_db = modelsAI.crud.create_mask(mask=new_mask_data, image_id=image_id)
 
         return {
             "detail": "Mask uploaded successfully",

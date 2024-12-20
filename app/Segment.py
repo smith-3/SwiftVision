@@ -30,15 +30,18 @@ class SAM:
         logger.info(f"CUDA is available: {torch.cuda.is_available()}")
 
     def load_image(self, image_path: str):
-        """Load an image from the given path."""
+        """
+        Load an image from the given path.
+        """
+        # Cargar la imagen desde la ruta
         image = cv2.imread(image_path)
         if image is None:
             raise ValueError(f"Could not load image from path: {image_path}")
+        
+        # Convertir la imagen de BGR a RGB
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        plt.figure(figsize=(10, 10))
-        plt.imshow(image)
-        plt.axis("off")
         return image
+
 
     def setup_model(self, model_type="vit_t"):  # vit_h para sam normal
         """Set up the SAM model and the mask generator."""
@@ -58,6 +61,9 @@ class SAM:
 
     def generate_masks(self, image: np.ndarray):
         """Generate masks for the given image."""
+        logger.info(f"estoy antes del glish: {image.size}")
+        height, width, channels = image.shape
+        print(f"Image size: {height}x{width}, Channels: {channels}")
         if image is None:
             raise ValueError("No image provided. Please provide an image.")
         masks = self.mask_generator.generate(image)

@@ -18,6 +18,7 @@ from app.Segment import SAM
 from app.StableDiffusion import StableDiffusion
 from utils.compress_descompress import (
     compress_encoded_matrix,
+    compress_image_bytes,
     decompress_encoded_matrix,
     run_length_encode_matrix
 )
@@ -309,13 +310,14 @@ class ModelsAI:
             logger.info(f"Proyecto creado con ID: {db_project.id}")
 
             # Crear imagen en la base de datos con los bytes de la imagen
-            image_data = ImageCreate(base_image=image_bytes)
+            compressed_image = compress_image_bytes(image_bytes)
+            image_data = ImageCreate(base_image=compressed_image)
             db_image = self.crud.create_image(image=image_data, project_id=db_project.id)
             logger.info(f"Imagen creada con ID: {db_image.id}")
 
             # Guardar la imagen en un archivo temporal para procesarla con SAM
             with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as temp_image_file:
-                temp_image_file.write(image_bytes)
+                temp_image_file.write(compressed_image)
                 temp_image_path = temp_image_file.name
                 logger.info(f"Imagen temporal guardada en: {temp_image_path}")
 
