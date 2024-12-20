@@ -138,12 +138,18 @@ class ModelsAI:
         """
         Valida que las dimensiones de la imagen y la máscara coincidan.
         """
+        img_dimensions = img.shape[:2]
+        mask_dimensions = mask.shape
+        logger.error(f"Dimensiones diferentes: Imagen {img_dimensions}, Máscara {mask_dimensions}")
         if img.shape[:2] != mask.shape:
-            logger.error("La imagen y la máscara tienen dimensiones diferentes.")
+            img_dimensions = img.shape[:2]
+            mask_dimensions = mask.shape
+            logger.error(f"Dimensiones diferentes: Imagen {img_dimensions}, Máscara {mask_dimensions}")
             raise HTTPException(
                 status_code=400,
-                detail="La imagen y la máscara tienen dimensiones diferentes."
+                detail=f"Dimensiones diferentes: Imagen {img_dimensions}, Máscara {mask_dimensions}"
             )
+
 
     def _save_image_locally(self, img: np.ndarray, filename: str, directory: str):
         """

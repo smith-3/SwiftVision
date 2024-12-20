@@ -1,3 +1,4 @@
+import json
 from typing import List
 from fastapi import Depends, FastAPI, File, UploadFile, HTTPException, status, APIRouter, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -98,6 +99,48 @@ def read_images(project_id: int):
             detail="No se encontraron imágenes para el proyecto."
         )
     return images
+
+@app.post("/images/{image_id}/masks/", response_model=schemas.Mask, tags=["Masks"])
+async def create_mask(
+    image_id: int,  # ID de la imagen
+    counts: str = Form(...),  # 'counts' enviado como cadena
+    size: str = Form(...),  # 'size' enviado como cadena
+    bbox: str = Form(...),  # 'bbox' enviado como cadena
+    point_coords: str = Form(...),  # 'point_coords' enviado como cadena
+    db: Session = Depends(get_db)  # Dependencia para obtener la sesión de la base de datos
+):
+
+    # Verificar si la imagen existe en la base de datos
+
+    try:
+        # Convertir las cadenas JSON a estructuras de datos Python (diccionarios/listas)
+        counts_data = json.loads(counts)  # 'counts' es un JSON, lo cargamos como un objeto Python
+        size_data = json.loads(size)  # 'size' es un JSON, lo cargamos como un objeto Python
+        bbox_data = json.loads(bbox)  # 'bbox' es un JSON, lo cargamos como un objeto Python
+        point_coords_data = json.loads(point_coords)  # 'point_coords' es un JSON, lo cargamos como un objeto Python
+
+        print(f"Received data: image_id={image_id}")
+        print(f"counts: {counts}")
+        print(f"size: {size}")
+        print(f"bbox: {bbox}")
+        print(f"point_coords: {point_coords}")
+
+
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Error al procesar los datos JSON: {e}")
+
+    # Crear el objeto MaskCreate para pasar a la capa de CRUD
+    mask_data = schemas.MaskCreate(
+        counts=counts_data,  # Ahora es un objeto JSON
+        size=size_data,  # Ahora es un objeto JSON
+        bbox=bbox_data,  # Ahora es un objeto JSON
+        point_coords=point_coords_data  # Ahora es un objeto JSON
+    )
+
+    # Llamar a la función para crear la máscara en la base de datos
+    db_mask = ModelsAI(db).crud.create_mask(mask=mask_data, image_id=image_id)
+
+    return db_mask
 
 @app.get(
     "/projects/{user_id}/", response_model=List[schemas.Project], tags=["Project"]

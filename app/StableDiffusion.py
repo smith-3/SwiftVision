@@ -34,7 +34,7 @@ class StableDiffusion:
                 prompt=text_prompt,
                 image=Image.fromarray(img_crop),
                 mask_image=Image.fromarray(mask_crop),
-                num_inference_steps=50
+                num_inference_steps=3
             ).images[0]
             img_filled = crop_for_filling_post(img, mask, np.array(img_crop_filled))
             return img_filled
