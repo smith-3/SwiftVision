@@ -107,7 +107,7 @@ class ModelsAI:
             mask = decompress_encoded_matrix(mask_counts, (height, width))  # (height, width)
             logger.info(f"Descompresión de la máscara exitosa con shape {mask.shape}")
 
-            mask = dilate_mask(mask, 30)
+            mask = dilate_mask(mask, 60)
 
             if mask.dtype != np.uint8:
                 mask = mask.astype(np.uint8)

@@ -110,3 +110,5 @@ Dockerfile
 models/
 output/
 images/
+inpainted_images/
+saved_images/
