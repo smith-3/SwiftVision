@@ -27,14 +27,14 @@ class StableDiffusion:
             logger.exception("Failed to load Stable Diffusion pipeline.")
             raise
 
-    def fill_img_with_sd(self, img: np.ndarray, mask: np.ndarray, text_prompt: str):
+    def fill_img_with_sd(self, img: np.ndarray, mask: np.ndarray, text_prompt: str, step: int = 50):
         try:
             img_crop, mask_crop = crop_for_filling_pre(img, mask)
             img_crop_filled = self.pipe(
                 prompt=text_prompt,
                 image=Image.fromarray(img_crop),
                 mask_image=Image.fromarray(mask_crop),
-                num_inference_steps=3
+                num_inference_steps=step
             ).images[0]
             img_filled = crop_for_filling_post(img, mask, np.array(img_crop_filled))
             return img_filled
