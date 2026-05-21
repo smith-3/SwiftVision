@@ -27,7 +27,7 @@ class StableDiffusion:
             logger.exception("Failed to load Stable Diffusion pipeline.")
             raise
 
-    def fill_img_with_sd(self, img: np.ndarray, mask: np.ndarray, text_prompt: str, step: int = 50):
+    def fill_img_with_sd(self, img: np.ndarray, mask: np.ndarray, text_prompt: str, step: int = 1):
         try:
             img_crop, mask_crop = crop_for_filling_pre(img, mask)
             img_crop_filled = self.pipe(
@@ -42,7 +42,7 @@ class StableDiffusion:
             logger.exception("Error in fill_img_with_sd.")
             raise
 
-    def replace_img_with_sd(self, img: np.ndarray, mask: np.ndarray, text_prompt: str, step: int = 50):
+    def replace_img_with_sd(self, img: np.ndarray, mask: np.ndarray, text_prompt: str, step: int = 1):
         try:
             img_padded, mask_padded, padding_factors = resize_and_pad(img, mask)
             img_padded_filled = self.pipe(
